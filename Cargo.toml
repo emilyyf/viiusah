@@ -1,0 +1,19 @@
+[package]
+name = "viiusah"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+winit = "0.28.7"
+vulkano = { git = "https://github.com/vulkano-rs/vulkano", features = ["serde"] }
+vulkano-shaders = { git = "https://github.com/vulkano-rs/vulkano" }
+vulkano-util = { git = "https://github.com/vulkano-rs/vulkano" }
+serde = {version = "1.0.188", features = ["derive"] }
+cgmath = "0.18"
+glium = "0.32.1"
+png = "0.17"
+rand = "0.8.4"
+ron = "0.8"
+winit_glium = { package = "winit", version = "0.27.1" }
