@@ -15,7 +15,7 @@ use vulkano::{
     pipeline::{
         graphics::{
             color_blend::ColorBlendState,
-            input_assembly::InputAssemblyState,
+            input_assembly::{InputAssemblyState, PrimitiveTopology},
             multisample::MultisampleState,
             rasterization::RasterizationState,
             subpass::PipelineRenderingCreateInfo,
@@ -171,17 +171,26 @@ fn main() {
     struct Vertex {
         #[format(R32G32_SFLOAT)]
         position: [f32; 2],
+        #[format(R32G32B32A32_SFLOAT)]
+        color: [f32; 4],
     }
 
     let vertices = [
         Vertex {
-            position: [0.8, 0.8],
+            position: [-0.95, -0.95],
+            color: [1.0, 0.0, 0.0, 0.0],
         },
         Vertex {
-            position: [-0.8, 0.8],
+            position: [-0.95, 0.95],
+            color: [0.0, 1.0, 0.0, 0.0],
         },
         Vertex {
-            position: [0.8, -0.8],
+            position: [0.95, -0.95],
+            color: [0.0, 0.0, 1.0, 0.0],
+        },
+        Vertex {
+            position: [0.95, 0.95],
+            color: [0.0, 0.0, 0.0, 0.0],
         },
     ];
 
@@ -225,6 +234,8 @@ fn main() {
             .entry_point("main")
             .unwrap();
 
+        println!("{:?}", Vertex::per_vertex());
+
         let vertex_input_state = Vertex::per_vertex()
             .definition(&vs.info().input_interface)
             .unwrap();
@@ -253,7 +264,12 @@ fn main() {
             GraphicsPipelineCreateInfo {
                 stages: stages.into_iter().collect(),
                 vertex_input_state: Some(vertex_input_state),
-                input_assembly_state: Some(InputAssemblyState::default()),
+                input_assembly_state: Some(InputAssemblyState {
+                    topology: vulkano::pipeline::PartialStateMode::Fixed(
+                        PrimitiveTopology::TriangleStrip,
+                    ),
+                    ..Default::default()
+                }),
                 viewport_state: Some(ViewportState::viewport_dynamic_scissor_irrelevant()),
                 rasterization_state: Some(RasterizationState::default()),
                 multisample_state: Some(MultisampleState::default()),
