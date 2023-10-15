@@ -2,6 +2,7 @@
 
 layout(location = 0) in vec4 vertColor;
 layout(location = 1) in float time;
+layout(location = 2) flat in uvec3 resolution;
 
 layout(location = 0) out vec4 f_color;
 

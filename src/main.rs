@@ -112,12 +112,6 @@ fn main() {
         })
         .expect("No physical device found");
 
-    println!(
-        "Using device: {} (type {:?})",
-        physical_device.properties().device_name,
-        physical_device.properties().device_type
-    );
-
     if physical_device.api_version() < Version::V1_3 {
         device_extensions.khr_dynamic_rendering = true;
     }
@@ -185,19 +179,19 @@ fn main() {
 
     let vertices = [
         Vertex {
-            position: [-0.95, -0.95],
+            position: [-1.0, -1.0],
             color: [1.0, 0.0, 0.0, 0.0],
         },
         Vertex {
-            position: [-0.95, 0.95],
+            position: [-1.0, 1.0],
             color: [0.0, 1.0, 0.0, 0.0],
         },
         Vertex {
-            position: [0.95, -0.95],
+            position: [1.0, -1.0],
             color: [0.0, 0.0, 1.0, 0.0],
         },
         Vertex {
-            position: [0.95, 0.95],
+            position: [1.0, 1.0],
             color: [0.0, 0.0, 0.0, 0.0],
         },
     ];
@@ -251,8 +245,6 @@ fn main() {
             .unwrap()
             .entry_point("main")
             .unwrap();
-
-        println!("{:?}", Vertex::per_vertex());
 
         let vertex_input_state = Vertex::per_vertex()
             .definition(&vs.info().input_interface)
@@ -373,7 +365,8 @@ fn main() {
 
             let uniform_subbuffer = {
                 let uniform_data = vs::Data {
-                    time: start.elapsed().as_secs_f32(),
+                    time: start.elapsed().as_secs_f32().into(),
+                    resolution: image_extent,
                 };
                 let subbuffer = uniform_buffer.allocate_sized().unwrap();
                 *subbuffer.write().unwrap() = uniform_data;
