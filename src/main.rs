@@ -1,9 +1,15 @@
-use std::sync::Arc;
+use std::{sync::Arc, time::Instant};
 use vulkano::{
-    buffer::{Buffer, BufferContents, BufferCreateInfo, BufferUsage},
+    buffer::{
+        allocator::{SubbufferAllocator, SubbufferAllocatorCreateInfo},
+        Buffer, BufferContents, BufferCreateInfo, BufferUsage,
+    },
     command_buffer::{
         allocator::StandardCommandBufferAllocator, AutoCommandBufferBuilder, CommandBufferUsage,
         RenderingAttachmentInfo, RenderingInfo,
+    },
+    descriptor_set::{
+        allocator::StandardDescriptorSetAllocator, PersistentDescriptorSet, WriteDescriptorSet,
     },
     device::{
         physical::PhysicalDeviceType, Device, DeviceCreateInfo, DeviceExtensions, Features,
@@ -24,7 +30,8 @@ use vulkano::{
             GraphicsPipelineCreateInfo,
         },
         layout::PipelineDescriptorSetLayoutCreateInfo,
-        GraphicsPipeline, PipelineLayout, PipelineShaderStageCreateInfo,
+        GraphicsPipeline, Pipeline, PipelineBindPoint, PipelineLayout,
+        PipelineShaderStageCreateInfo,
     },
     render_pass::{AttachmentLoadOp, AttachmentStoreOp},
     swapchain::{
@@ -58,6 +65,7 @@ fn main() {
     let event_loop = EventLoop::new();
     let library = VulkanLibrary::new().unwrap();
     let required_extensions = Surface::required_extensions(&event_loop);
+    let start = Instant::now();
 
     let instance = Instance::new(
         library,
@@ -195,7 +203,7 @@ fn main() {
     ];
 
     let vertex_buffer = Buffer::from_iter(
-        memory_allocator,
+        memory_allocator.clone(),
         BufferCreateInfo {
             usage: BufferUsage::VERTEX_BUFFER,
             ..Default::default()
@@ -208,6 +216,16 @@ fn main() {
         vertices,
     )
     .unwrap();
+
+    let uniform_buffer = SubbufferAllocator::new(
+        memory_allocator.clone(),
+        SubbufferAllocatorCreateInfo {
+            buffer_usage: BufferUsage::UNIFORM_BUFFER,
+            memory_type_filter: MemoryTypeFilter::PREFER_DEVICE
+                | MemoryTypeFilter::HOST_SEQUENTIAL_WRITE,
+            ..Default::default()
+        },
+    );
 
     mod vs {
         vulkano_shaders::shader! {
@@ -300,6 +318,8 @@ fn main() {
 
     let mut previous_frame_end = Some(sync::now(device.clone()).boxed());
 
+    let descriptor_set_allocator = StandardDescriptorSetAllocator::new(device.clone());
+
     event_loop.run(move |event, _, control_flow| match event {
         Event::WindowEvent {
             event: WindowEvent::CloseRequested,
@@ -351,6 +371,25 @@ fn main() {
                 recreate_swapchain = true;
             }
 
+            let uniform_subbuffer = {
+                let uniform_data = vs::Data {
+                    time: start.elapsed().as_secs_f32(),
+                };
+                let subbuffer = uniform_buffer.allocate_sized().unwrap();
+                *subbuffer.write().unwrap() = uniform_data;
+
+                subbuffer
+            };
+
+            let layout = pipeline.layout().set_layouts().get(0).unwrap();
+            let set = PersistentDescriptorSet::new(
+                &descriptor_set_allocator,
+                layout.clone(),
+                [WriteDescriptorSet::buffer(0, uniform_subbuffer)],
+                [],
+            )
+            .unwrap();
+
             let mut builder = AutoCommandBufferBuilder::primary(
                 &command_buffer_allocator,
                 queue.queue_family_index(),
@@ -374,6 +413,13 @@ fn main() {
                 .set_viewport(0, [viewport.clone()].into_iter().collect())
                 .unwrap()
                 .bind_pipeline_graphics(pipeline.clone())
+                .unwrap()
+                .bind_descriptor_sets(
+                    PipelineBindPoint::Graphics,
+                    pipeline.layout().clone(),
+                    0,
+                    set,
+                )
                 .unwrap()
                 .bind_vertex_buffers(0, vertex_buffer.clone())
                 .unwrap()
